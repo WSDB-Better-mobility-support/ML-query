@@ -12,6 +12,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
+import malelm.com.gquery.logging.*;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
@@ -181,6 +182,7 @@ public class GoogleSpectrumQuery
                 try {
                     timeBeforeQuery = System.currentTimeMillis();
                     sleep(sleepTime); // This extra time is to allow the location service provide the app with location info.
+                    Logger.log(String.format("google-query-start"));
                     HttpClient client = new DefaultHttpClient();
                     HttpPost request = new HttpPost("https://www.googleapis.com/rpc");
                     HttpConnectionParams.setConnectionTimeout(client.getParams(), 20 * 1000);
@@ -193,20 +195,33 @@ public class GoogleSpectrumQuery
 
                     BufferedReader rd = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
                     String line = "";
-                    while ((line = rd.readLine()) != null) {
-                        Log.d("QueryLine", line);
+                    boolean first = true;
+                    while ((line = rd.readLine()) != null)
+                    {
+                        if (first)
+                        {
+                            Logger.log("google-query-first-data");
+                            first = false;
+                        }
+                        Logger.log(line);
                     }
+                    Logger.log("google-query-done");
+
                     timeAfterQuery = System.currentTimeMillis() ;
                 }catch(UnsupportedEncodingException e)
                 {
+                    Logger.log("google-query-error Unsupported Encoding: " + e.getMessage());
                     timeAfterQuery = System.currentTimeMillis() ;
                 }catch(JSONException e)
                 {
+                    Logger.log("google-query-error JSON exception: " + e.getMessage());
                     timeAfterQuery = System.currentTimeMillis() ;
                 }catch(IOException e)
                 {
+                    Logger.log("google-query-error i/o exception: " + e.getMessage());
                     timeAfterQuery = System.currentTimeMillis() ;
                 }catch(Exception e){
+                    Logger.log("google-query-error exception: " + e.getMessage());
                     timeAfterQuery = System.currentTimeMillis() ;
                 }
 

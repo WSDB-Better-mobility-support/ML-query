@@ -30,7 +30,9 @@ public class MainActivity extends ActionBarActivity {
        // widgetInitializer();
 
         if (!isGooglePlayServicesOk()) { return;}
-
+        //When the app is lunched start location service
+        Intent intent = new Intent(this, LocationService.class);
+        startService(intent);
 
         //to prevent the app when it was crashed from using the old PendingIntent
         Intent i = new Intent(this, QueryReceiver.class);
@@ -50,9 +52,7 @@ public class MainActivity extends ActionBarActivity {
 
     public void gQuery(View v){
 
-        //When the app is lunched start location service
-        Intent intent = new Intent(this, LocationService.class);
-        startService(intent);
+
 
         Intent i = new Intent(this, QueryReceiver.class);
 
