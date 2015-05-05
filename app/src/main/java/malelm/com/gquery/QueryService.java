@@ -58,6 +58,7 @@
             List<LocationUnit> locations;
             // The first query has a fixed params and it is used to prepare for the next query
             if (firstQuery) {
+                Log.d(TAG, "OnStart");
                 currentLocationQuery("FIRST STAGE");
             }
             // In the second query we need to find out the size of the query and its direction
@@ -73,7 +74,7 @@
                     return super.onStartCommand(intent, flags, startId);
                 }
                 locations = lDSource.findData(timeBefore, timeAfter);
-                lDSource.close();
+              //  lDSource.close();
                 // To check if there was some relevant data in the database
                 if (locations.size() < TWO_LOC_CONTROL) {
                     // if there is not relevant location data do one location query which is your current location
@@ -136,7 +137,7 @@
                 // Getting the data within the previous query time
                 locations = lDSource.findData(timeBefore, timeAfter);
                 // get the location objects after the last query
-                lDSource.close();
+              //  lDSource.close();
                 // get the location objects after the last query
                 List<LocationUnit> loc = getAfterQueryLocations();
                 // If there is an error in timing do the current location query and return

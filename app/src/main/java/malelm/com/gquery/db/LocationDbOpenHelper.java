@@ -18,7 +18,7 @@ public class LocationDbOpenHelper extends SQLiteOpenHelper {
     private static final String TAG = "DATABASE_TAG";
 
     private static final String DB_NAME = "LocationDb";
-    private static final int DB_VERSION = 2;
+    private static final int DB_VERSION = 3;
     public static final String TABLE_LOCATION = "LocationT";
     public static final String COL_ID = "id";
     public static final String COL_LAT = "lat";

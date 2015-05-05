@@ -4,68 +4,22 @@ import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
-import android.location.Location;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
-import android.widget.EditText;
-import android.widget.TextView;
 import android.widget.Toast;
-
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
-import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.location.LocationListener;
-import com.google.android.gms.location.LocationRequest;
-import com.google.android.gms.location.LocationServices;
 
-import java.security.cert.LDAPCertStoreParameters;
 import java.util.Calendar;
-import java.util.List;
 
-import malelm.com.gquery.dataModel.LocationUnit;
-import malelm.com.gquery.db.LocationDataSource;
-
-/**
- * 1- make this activity location aware. Using fussed location api
- * a- permissions
- * b- add dependencies for google play services
- * c-implements interfaces
- * d-check for the availability of google play services
- * e- Accessing google play services
- * f- Get a single location object
- * Get location updates
- * g-Create location request
- * h-Ask for the location updates
- * i-get the updates and display them
- * j-remove the location updates
- * 2- Database
- * 1- instantiate the LocationDatabase to have access to database functionality
- * 1.5 open/close connection to database
- * 1.5 put the open method in the onResume method to keep a persistence  connection to the database
- * 2- instantiate the LocationUnit to package up the data (Not very necessary here) but i chose to do it
- * 3- adding a row of data to database
- * 4- add to database control
- */
-public class MainActivity extends ActionBarActivity
-        //c
-        implements GoogleApiClient.ConnectionCallbacks,
-        GoogleApiClient.OnConnectionFailedListener,
-        LocationListener {
+public class MainActivity extends ActionBarActivity {
 
     public static final int CHECK_INTERVAL = 10 * 1000;
     public static final int START_QUERYING_IN = 5 ;
-    public static final int LOCATION_REQUEST_INTERVAL = 300;
-    public static final int FASTEST_LOCATION_INTERVAL = 100;
     public static final int ERROR_CODE = 9001;
-    private GoogleApiClient gac;
-    private LocationRequest lr;
-    private Location location;
-    private LocationDataSource lDSource;
-    private TextView tv;
     private AlarmManager am;
     private WakeLock wakelock;
 
@@ -73,23 +27,10 @@ public class MainActivity extends ActionBarActivity
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        widgetInitializer();
-        //d
+       // widgetInitializer();
+
         if (!isGooglePlayServicesOk()) { return;}
-        //e
-        gac = new GoogleApiClient.Builder(this)
-                .addApi(LocationServices.API)
-                .addConnectionCallbacks(this)
-                .addOnConnectionFailedListener(this)
-                .build();
-        if (gac != null) {
-            gac.connect();
-        }
-        //g
-        createLocationRequestObject();
-        //1
-        lDSource = new LocationDataSource(this);
-        lDSource.open();
+
 
         //to prevent the app when it was crashed from using the old PendingIntent
         Intent i = new Intent(this, QueryReceiver.class);
@@ -98,17 +39,21 @@ public class MainActivity extends ActionBarActivity
         am.cancel(pi);
 
         // keep the cpu awake
-        PowerManager powerManager = (PowerManager) getSystemService(POWER_SERVICE);
-        wakelock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
-                "MyWakelockTag");
-        wakelock.acquire();
+//        PowerManager powerManager = (PowerManager) getSystemService(POWER_SERVICE);
+//        wakelock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,"MyWakelockTag");
+//        wakelock.acquire();
     }
 
-    private void widgetInitializer() {
-        tv = (TextView) findViewById(R.id.textView);
-    }
+//    private void widgetInitializer() {
+//        tv = (TextView) findViewById(R.id.textView);
+//    }
 
     public void gQuery(View v){
+
+        //When the app is lunched start location service
+        Intent intent = new Intent(this, LocationService.class);
+        startService(intent);
+
         Intent i = new Intent(this, QueryReceiver.class);
 
         Calendar cal = Calendar.getInstance();
@@ -125,13 +70,15 @@ public class MainActivity extends ActionBarActivity
         // Stop the service
         Intent intent = new Intent(this, QueryReceiver.class);
         stopService(intent);
+        Intent intent2 = new Intent(this, LocationService.class);
+        stopService(intent2);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         //1.5
-        lDSource.open();
+
     }
 
     //@Override
@@ -142,78 +89,16 @@ public class MainActivity extends ActionBarActivity
    // }
 
 
-    private void createLocationRequestObject() {
-        lr = new LocationRequest();
-        lr.setInterval(LOCATION_REQUEST_INTERVAL);
-        lr.setFastestInterval(FASTEST_LOCATION_INTERVAL);
-        lr.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-    }
 
-    @Override
-    public void onConnected(Bundle bundle) {
-        //f
-        location = LocationServices.FusedLocationApi.getLastLocation(gac);
 
-        tv.setText(
-                "onConnection \n"+
-               "Latit = " + location.getLatitude() + "\n"+
-               "Longi = " + location.getLongitude() +"\n"+
-               "Speed = " + location.getSpeed() +"\n"+
-               "Accur = " + location.getAccuracy()
-        );
 
-        if (location != null) {
-            //2
-            LocationUnit lu = new LocationUnit();
-            lu.setTime(System.currentTimeMillis());
-            lu.setLat(location.getLatitude());
-            lu.setLon(location.getLongitude());
-            lu.setSpeed(location.getSpeed());
-            //4
-            if (lu != null) {
-                //3
-                lDSource.addRow(lu);
-            }
-        }
-        LocationServices.FusedLocationApi.requestLocationUpdates(gac, lr, this);
-    }
 
-    @Override
-    public void onLocationChanged(Location location) {
-        //i
-        this.location = location;
-
-        tv.setText(
-                "onLocationChanged \n"+
-                        "Latit = " + location.getLatitude() + "\n"+
-                        "Longi = " + location.getLongitude() +"\n"+
-                        "Speed = " + location.getSpeed() +"\n"+
-                        "Accur = " + location.getAccuracy()+"\n"
-
-        );
-
-        if (location != null) {
-            //2
-            LocationUnit lu = new LocationUnit();
-            lu.setTime(System.currentTimeMillis());
-            lu.setLat(location.getLatitude());
-            lu.setLon(location.getLongitude());
-            lu.setSpeed(location.getSpeed());
-            //4
-            if (lu != null) {
-                //3
-                lDSource.addRow(lu);
-            }
-        }
-    }
 
     @Override
     protected void onDestroy() {
 
         //j
-        lDSource.close();
-        LocationServices.FusedLocationApi.removeLocationUpdates(gac, this);
-        wakelock.release();
+      //  wakelock.release();
         super.onDestroy();
     }
 
@@ -230,13 +115,4 @@ public class MainActivity extends ActionBarActivity
         return false;
     }
 
-    @Override
-    public void onConnectionSuspended(int i) {
-
-    }
-
-    @Override
-    public void onConnectionFailed(ConnectionResult connectionResult) {
-
-    }
 }

@@ -118,6 +118,7 @@ public class LocationDataSource {
         return locations;
     }
     public LocationUnit oneExtraLoc( long time){
+        open();
         Cursor cursor = db.rawQuery("SELECT * FROM " + LocationDbOpenHelper.TABLE_LOCATION +
                 " WHERE "+LocationDbOpenHelper.COL_TIME +" < " + time +" LIMIT 1 " ,null);
         List<LocationUnit> locations = getLocationUnits(cursor);
