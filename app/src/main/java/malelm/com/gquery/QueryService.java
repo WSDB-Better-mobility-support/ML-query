@@ -65,7 +65,6 @@
             else if (secondQuery) {
                 writeToFile("query.txt", "SECOND QUERY\n");
                 timeBeforeAfter();
-                writeToFile("query.txt", "Time:"+ (timeAfter - timeBefore) +"\n");
                 lDSource.open();
                 // Getting the data within the previous query time
                 // If there is an error in timing do the current location query and return
@@ -73,6 +72,7 @@
                     currentLocationQuery("SECOND: TIME ERROR");
                     return super.onStartCommand(intent, flags, startId);
                 }
+                // Get the object after the last query to get the most recent direction
                 locations = lDSource.findData(timeBefore, timeAfter);
               //  lDSource.close();
                 // To check if there was some relevant data in the database
@@ -80,7 +80,7 @@
                     // if there is not relevant location data do one location query which is your current location
                     currentLocationQuery("NOT ENOUGH LOCATIONS");
                 } else {
-                    if (locations.size() == 1){ // if there is only one object pull one extra object before the query time
+                    if (locations.size() == ONE_LOC_CONTROL){ // if there is only one object pull one extra object before the query time
                                                 // this approach might cause a problem in the direction change detection
                         locations.add( lDSource.oneExtraLoc(timeBefore));
                     }
@@ -92,11 +92,11 @@
                     if (aveSpeed <= SPEED_CONTROL) {
                         numOfLoc = MaxNumOfLoc;
                     }else {   // this (if) is to protect from the case where the speed is approximating 0
-
                         double time = ((timeAfter - timeBefore) - GoogleSpectrumQuery.sleepTime) / 1000; // Time in seconds and the superimpose sleeping time is subtracted
                         double distOfQuery = Math.floor(aveSpeed * time);
                         // numOfLoc
                         numOfLoc = Math.floor((GOOGLE_AREA * numOfLoc - distOfQuery) / distOfQuery);
+                        writeToFile("query.txt","--------\n time:"+time+"\ndistOfQuery: "+distOfQuery+"\nnumOfLoc:"+numOfLoc+"\n-------");
 
                         if (numOfLoc < ONE_LOC_CONTROL) {
                             currentLocationQuery("NUM OF LOCATIONS IS " + numOfLoc + "SECOND STAGE");
@@ -107,6 +107,14 @@
                         }
                     }
                     // DIRECTION
+                    // get locations after the last query as the most fresh locations
+                    locations = lDSource.findData(timeAfter);
+                    if (locations.size() == ONE_LOC_CONTROL){ // if there is only one object pull one extra object from within the previous query time
+                        locations.add( lDSource.oneExtraLoc(timeAfter));
+                    }else if(locations.size() < ONE_LOC_CONTROL){
+                        locations = lDSource.findData(timeBefore, timeAfter);
+                    }
+
                     double[] changeFactors = getChangeFactors(locations);
                     double lat = latArr.get(0); // This is you last know location within the query time
                     double lon = lonArr.get(0);
@@ -119,7 +127,6 @@
                     // Calculating where you reached with your query for the next query
                     lastLat = numOfLoc * DIF_LL_100_M * changeFactors[0] + lat ;
                     lastLon = numOfLoc * DIF_LL_100_M * changeFactors[1] + lon ;
-                    // reset the MaxNumOfloc
 
                 secondQuery = false;
                 }
@@ -132,12 +139,12 @@
                 //DIRECTION TEST
                 // initialize the fields timeBefore/timeAfter for the last query
                 timeBeforeAfter();
-                writeToFile("query.txt", "Time:"+(timeAfter-timeBefore)+"\n"+  timeBefore+"\n"+timeAfter+"\n");
+                writeToFile("query.txt", "Time:"+(timeAfter-timeBefore)+"\n");
                 lDSource.open();
                 // Getting the data within the previous query time
                 locations = lDSource.findData(timeBefore, timeAfter);
                 // get the location objects after the last query
-              //  lDSource.close();
+                lDSource.close();
                 // get the location objects after the last query
                 List<LocationUnit> loc = getAfterQueryLocations();
                 // If there is an error in timing do the current location query and return
@@ -155,6 +162,7 @@
                     if (locations.size() == 1){
                         locations.add( lDSource.oneExtraLoc(timeBefore));
                     }
+
                     double[] changeFactors = getChangeFactors(locations);
                     // At this stage we should have a direction after the last query and we can compare them
                     double[] NewchangeFactors = getChangeFactors(loc);
@@ -163,6 +171,10 @@
                     if (Math.abs(NewchangeFactors[0] - changeFactors[0]) > DIR_CONTROL || Math.abs(NewchangeFactors[1] - changeFactors[1]) > DIR_CONTROL) {
                         //The direction has been change Quick recovery
                         currentLocationQuery("DIRECTION CHANGE");
+                        // stop and return
+                        return super.onStartCommand(intent, flags, startId);
+                    } else if( Double.isNaN(NewchangeFactors[0]) || Double.isNaN(NewchangeFactors[1]) || Double.isNaN(changeFactors[0] )|| Double.isNaN(changeFactors[1]) ){
+                        currentLocationQuery("Can't specify the direction");
                         // stop and return
                         return super.onStartCommand(intent, flags, startId);
                     } else {
@@ -176,8 +188,10 @@
                             double time = ((timeAfter - timeBefore) - GoogleSpectrumQuery.sleepTime) / 1000; // Time in seconds and the superimpose sleeping time is subtracted
                             double distOfQuery = Math.floor(aveSpeed * time);
                             numOfLoc = Math.floor((GOOGLE_AREA * numOfLoc - distOfQuery) / distOfQuery);
+                            writeToFile("query.txt","--------\n time:"+time+"\ndistOfQuery: "+distOfQuery+"\nnumOfLoc:"+numOfLoc+"\n-------");
+
                             if (numOfLoc <= NUM_OF_LOC_CONTROL) {
-                                currentLocationQuery("NUM OF LOCATIONS IS "+ numOfLoc+"SECOND STAGE");
+                                currentLocationQuery("NUM OF LOCATIONS IS "+ numOfLoc+"Third STAGE");
                                 // Stop and return
                                 return super.onStartCommand(intent, flags, startId); // important to not allow  "secondQuery = false" to be executed
                             } else if (numOfLoc > MaxNumOfLoc) {
@@ -200,7 +214,7 @@
                         double leftDis = currentLocation.distanceTo(lastLocation);
 
                         double leftNumOfloc = Math.floor(leftDis / GOOGLE_AREA);
-
+                        writeToFile("query.txt" , "leftNumOfLoc: = " + leftNumOfloc );
                         if (leftNumOfloc <= MaxNumOfLoc/2) {
                             writeToFile("query.txt" , "lat = " + lastLat  +"\nlon = "+ lastLon +
                                     "\nlatChFac = "+changeFactors[0]+"\nlonChFac = " +
@@ -306,9 +320,8 @@
             lDSource.close();
             if (l != null) {
                 writeToFile("query.txt" , "lat = " + l.getLat() +"\nlon = "+ l.getLon()  +
-                        " 1 , 1 , 1 \n\n");
+                        " 1 , 1 , 1 \n");
                 writeToFile("path.txt" , counter ,l.getLat() , l.getLon() , 1,1,1);
-
                 GoogleSpectrumQuery.query(l.getLat() + LAT_SHIFT, l.getLon() + LON_SHIFT, 1, 1, 1);
             }
             firstQuery = false;
