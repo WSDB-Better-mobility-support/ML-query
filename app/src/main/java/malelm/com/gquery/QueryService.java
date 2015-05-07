@@ -21,7 +21,7 @@
     public class QueryService extends Service {
 
         private static final String TAG = QueryService.class.getSimpleName();
-        public static final int TWO_LOC_CONTROL = 1;
+        public static final int ONE_LOC_CONTROL = 1;
         public static final double SPEED_CONTROL = 1;
         public static final int GOOGLE_AREA = 100;
         public static final int NUM_OF_LOC_CONTROL = 0;
@@ -65,7 +65,7 @@
             else if (secondQuery) {
                 writeToFile("query.txt", "SECOND QUERY\n");
                 timeBeforeAfter();
-                writeToFile("query.txt", "Time:"+ timeBefore+"\n"+timeAfter+"\n");
+                writeToFile("query.txt", "Time:"+ (timeAfter - timeBefore) +"\n");
                 lDSource.open();
                 // Getting the data within the previous query time
                 // If there is an error in timing do the current location query and return
@@ -76,7 +76,7 @@
                 locations = lDSource.findData(timeBefore, timeAfter);
               //  lDSource.close();
                 // To check if there was some relevant data in the database
-                if (locations.size() < TWO_LOC_CONTROL) {
+                if (locations.size() < ONE_LOC_CONTROL) {
                     // if there is not relevant location data do one location query which is your current location
                     currentLocationQuery("NOT ENOUGH LOCATIONS");
                 } else {
@@ -87,7 +87,7 @@
 
                     // SPEED TEST an calculating the numOfLoc
                     double aveSpeed = getAveSpeed(locations);
-                    int MaxNumOfLoc =  getMaxNumOfLoc( aveSpeed);
+                    int MaxNumOfLoc =  getMaxNumOfLoc(aveSpeed);
 
                     if (aveSpeed <= SPEED_CONTROL) {
                         numOfLoc = MaxNumOfLoc;
@@ -98,7 +98,7 @@
                         // numOfLoc
                         numOfLoc = Math.floor((GOOGLE_AREA * numOfLoc - distOfQuery) / distOfQuery);
 
-                        if (numOfLoc <= NUM_OF_LOC_CONTROL) {
+                        if (numOfLoc < ONE_LOC_CONTROL) {
                             currentLocationQuery("NUM OF LOCATIONS IS " + numOfLoc + "SECOND STAGE");
                             // Stop and return
                             return super.onStartCommand(intent, flags, startId); // important to not allow  "secondQuery = false" to be executed
@@ -146,7 +146,7 @@
                     return super.onStartCommand(intent, flags, startId);
                 }
                 // To check if there was some relevant data in the database
-                if (locations.size() < TWO_LOC_CONTROL) {
+                if (locations.size() < ONE_LOC_CONTROL) {
                     // if there is not relevant location data do one location query which is your current location
                          currentLocationQuery("NOT ENOUGH LOCATIONS");
                          // Stop and return
@@ -239,7 +239,7 @@
             lDSource.close();
 
             // The locations are less then 2 sleep for a second and check again
-            while (locations.size() < TWO_LOC_CONTROL) {
+            while (locations.size() < ONE_LOC_CONTROL) {
                 try {
                     Thread.sleep(100);
                 } catch (InterruptedException e) {
